@@ -1,15 +1,21 @@
-﻿public class ChainResource<T1, T2> : IChainResource where T1 : IMizeCache<T2>, new()
+﻿public class ChainResource<T1, T2> : IChainResource<T2> where T1 : IMizeCache<T2>, new()
 {
     private readonly IEnumerable<IStore<T2>> _stores;
-    private readonly TimeSpan _timeout = TimeSpan.FromSeconds(5);
+    private bool _isUpdateInProgress;
+    private T2 _tmpValue;
 
     public ChainResource()
     {
         _stores = new T1().Stores;
     }
 
-    public async Task GetValue()
+    public async Task<T2> GetValue()
     {
+        if (_isUpdateInProgress) //todo: edge case, update takes longer than store expiration time
+        {
+            return _tmpValue;
+        }
+
         var storesToBeUpdated = new List<IStore<T2>>();
         T2 value = default(T2);
         
@@ -17,18 +23,15 @@
         {
             if (store.Type == StorageType.Read)
             {
-                var isValue = store.GetValue(out value, _timeout);
+                var isValue = store.GetValue(out value);
                 if (isValue)
                     break;
             }
             else if (store.Type == StorageType.Write)
             {
-                if (DateTime.UtcNow - store.LastUpdated < store.ExpirationTime)
-                {
-                    var isValue = store.GetValue(out value, _timeout);
-                    if (isValue)
-                        break;
-                }
+                var isValue = store.GetValue(out value);
+                if (isValue)
+                    break;
 
                 storesToBeUpdated.Add(store);
             }
@@ -40,10 +43,14 @@
         }
 
         storesToBeUpdated.ForEach(store => UpdateStoreAsync(store, value));
+
+        return value;
     }
 
     private async Task UpdateStoreAsync(IStore<T2> store, T2 value)
     {
+        _tmpValue = value;
+        _isUpdateInProgress = true;
         store.UpdateValue(value).ContinueWith(t =>
         {
             if (t.IsFaulted)
@@ -51,5 +58,7 @@
                 throw new Exception($"Could not update store, error: {t.Exception}");
             }
         });
+
+        _isUpdateInProgress = false;
     }
 }

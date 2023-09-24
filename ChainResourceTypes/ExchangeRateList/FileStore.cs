@@ -5,12 +5,12 @@ public class FileStore<T> : StoreBase<T>
 {
     private string _filePath;
 
-    public FileStore(string filePath, TimeSpan? expiration) : base(StorageType.Write, expiration ?? TimeSpan.FromHours(4))
+    public FileStore(string filePath, TimeSpan expiration) : base(StorageType.Write, expiration)
     {
         _filePath = filePath;
     }
 
-    internal override bool Get(out T value, TimeSpan timeout)
+    internal override bool Get(out T value)
     {
         value = default(T);
 

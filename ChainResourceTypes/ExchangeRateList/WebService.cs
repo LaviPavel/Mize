@@ -5,12 +5,12 @@ public class WebService<T> : StoreBase<T>
     private string _url = "https://openexchangerates.org/api/latest.json?app_id=3e2d71e83a7f47f5aad21258bd32e35d&prettyprint=false&show_alternative=false";
     private HttpClient _client;
     
-    public WebService(HttpClient? client) : base(StorageType.Read)
+    public WebService(HttpClient? client) : base(StorageType.Read, TimeSpan.MinValue)
     {
         _client = client ?? new HttpClient();
     }
 
-    internal override bool Get(out T value, TimeSpan timeout)
+    internal override bool Get(out T value)
     {
         var response = _client.GetAsync(_url).Result;
         var content = response.Content.ReadAsStringAsync().Result;

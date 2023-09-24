@@ -6,8 +6,8 @@
     {
         Stores = new List<IStore<string>>
         {
-            new MemoryStore<string>(null),
-            new FileStore<string>("ExchangeRateStore.json", null),
+            new MemoryStore<string>(TimeSpan.FromHours(1)),
+            new FileStore<string>("ExchangeRateStore.json", TimeSpan.FromHours(4)),
             new WebService<string>(null)
         };
     }

@@ -1,4 +1,3 @@
-﻿var a = new ChainResource<ExchangeRateList, string>();
-var val = a.GetValue();
-val.Wait();
-Console.WriteLine("Hello :)");
+﻿var chain = new ChainResource<ExchangeRateList, string>();
+var val = chain.GetValue();
+Console.WriteLine($"Hello :{val}"); 

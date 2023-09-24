@@ -1,4 +1,4 @@
-﻿public interface IChainResource
+﻿public interface IChainResource<T>
 {
-    Task GetValue();
+    Task<T> GetValue();
 }

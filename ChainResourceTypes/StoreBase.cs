@@ -4,32 +4,31 @@
     {
         internal static object lockFile = new Object();
         internal bool _isLocked;
+        internal bool _useBaseLock;
+        private DateTime _lastUpdated;
 
         public StorageType Type { get; }
-        public TimeSpan ExpirationTime { get; }
-        public DateTime LastUpdated { get; set; }
+        public TimeSpan Expiration { get; }
 
-        internal abstract bool Get(out T value, TimeSpan timeout);
-
-        public bool GetValue(out T value, TimeSpan timeout)
+        protected StoreBase(StorageType type, TimeSpan expiration, bool useBaseLock = true)
         {
-            var tik = DateTime.UtcNow;
-            DateTime tok;
+            Type = type;
+            Expiration = expiration;
+            _useBaseLock = useBaseLock;
+        }
 
-            while (_isLocked)
+        internal abstract bool Get(out T value);
+
+        public bool GetValue(out T value)
+        {
+            if (DateTime.UtcNow - _lastUpdated < Expiration || Type == StorageType.Read)
             {
-                tok = DateTime.UtcNow;
-                if (tok - tik > timeout)
-                {
-                    Console.WriteLine("File is locked, failed to read value");
-                    value = default(T);
-                    return false;
-                }
-
-                Thread.Sleep(100);
+                var isValueReady = Get(out value);
+                return isValueReady;
             }
 
-            return Get(out value, timeout);
+            value = default(T);
+            return false;
         }
         
         internal abstract Task Update(T value);
@@ -39,24 +38,16 @@
             if (Type == StorageType.Read)
                 return;
 
-            lock (lockFile)
+            if (_useBaseLock)
             {
-                _isLocked = true;
-                Update(value).ContinueWith(_ => LastUpdated = DateTime.UtcNow);
+                lock (lockFile)
+                {
+                    _isLocked = true;
+                    Update(value).ContinueWith(_ => _lastUpdated = DateTime.UtcNow);
+                }
+
+                _isLocked = false;
             }
-
-            _isLocked = false;
-        }
-        
-        protected StoreBase(StorageType type, TimeSpan expiration)
-        {
-            Type = type;
-            ExpirationTime = expiration;
-        }
-
-        protected StoreBase(StorageType read)
-        {
-            Type = read;
         }
     }
 }
